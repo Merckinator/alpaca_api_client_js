@@ -1,4 +1,5 @@
 import type { AlpacaBar } from "@alpacahq/alpaca-trade-api/dist/resources/datav2/entityv2";
+import type { Averages } from "./interfaces";
 
 const Alpaca = require("@alpacahq/alpaca-trade-api");
 
@@ -9,54 +10,91 @@ const alpaca = new Alpaca({
 });
 
 // // Main function
-// SECTION: Sell any stocks we should sell
-// const positionSymbols = await getPositionSymbols();
-// const positionBars = await getBars(positionSymbols);
-// const [shortAverage, longAverage] = calculateAverages(positionBars);
-// console.log("positionAverages", shortAverage, longAverage);
+try {
+  const scriptStartTime = new Date();
 
-// // Sell any stocks we should sell
-// if (longAverage === 0 || shortAverage <= longAverage) {
-//   console.log("Sell the stock");
-//   alpaca.createOrder({
-//     symbol: "AAPL",
-//     qty: 1,
-//     side: "sell",
-//     type: "market",
-//     time_in_force: "day",
-//   });
-// }
+  // SECTION: Check if any stocks we own should be sold
+  const positionSymbols = await getPositionSymbols();
+  const positionBars = await getBars(positionSymbols);
+  const positionAverages = positionBars.map(barsToAverages);
+  const symbolsToSell = positionAverages.filter(
+    (a) =>
+      a.shortAverages[0] <= a.longAverages[0] &&
+      a.shortAverages[1] > a.longAverages[1]
+  );
 
-// SECTION: Find new stocks to buy
-const account = await alpaca.getAccount();
-const cash = account.cash;
-const affordableSymbols = await getAffordableSymbols(cash);
-const affordableBars = await getBars(affordableSymbols);
+  // SECTION: Sell any stocks we should sell
+  symbolsToSell.forEach((a) => {
+    sendNotification(`Selling: ${a.symbol}`);
+    alpaca.createOrder({
+      symbol: a.symbol,
+      qty: 1,
+      side: "sell",
+      type: "market",
+      time_in_force: "day",
+    });
+  });
 
-const affordableAverages = affordableBars
-  .map((bars) => {
-    if (bars.length < 1) {
-      return { symbol: "NO_DATA", shortAverages: [0, 0], longAverages: [0, 0] };
-    } else {
-      const [shortAverages, longAverages] = calculateAverages(bars);
+  // SECTION: Find new stocks to buy
+  const account = await alpaca.getAccount();
+  const cash = account.cash;
+  const affordableSymbols = await getAffordableSymbols(cash);
+  const affordableBars = await getBars(affordableSymbols);
+  const affordableAverages = affordableBars
+    .map(barsToAverages)
+    .filter((a) => a.symbol !== "NO_DATA");
 
-      return { symbol: bars[0].Symbol, shortAverages, longAverages };
-    }
-  })
-  .filter((a) => a.symbol !== "NO_DATA");
+  // Want to buy stocks where the short average just rose above the long average.
+  // This is a bullish signal that the stock is likely starting to rise in price.
+  const buyableAverages = affordableAverages.filter(
+    (a) =>
+      a.shortAverages[0] > a.longAverages[0] &&
+      a.shortAverages[1] <= a.longAverages[1]
+  );
 
-// Want to buy stocks where the short average just rose above the long average.
-// This is a bullish signal that the stock is likely starting to rise in price.
-const buyableAverages = affordableAverages.filter(
-  (a) =>
-    a.shortAverages[0] > a.longAverages[0] &&
-    a.shortAverages[1] <= a.longAverages[1]
-);
+  // SECTION: Buy a new stock that we identified at random from our list of buyable stocks
+  const symbolToBuy =
+    buyableAverages[Math.floor(Math.random() * buyableAverages.length)].symbol;
+  sendNotification(`Buying: ${symbolToBuy}`);
 
-console.log(buyableAverages);
+  alpaca.createOrder({
+    symbol: symbolToBuy,
+    qty: 1,
+    side: "buy",
+    type: "market",
+    time_in_force: "day",
+  });
 
-// Buy any new stocks we should buy
-// SECTION: Buy any new stocks that we identified
+  // SECTION: Closing statements
+  const scriptEndTime = new Date();
+  sendNotification(
+    `Script runtime (ms): ${
+      scriptEndTime.getMilliseconds() - scriptStartTime.getMilliseconds()
+    }`
+  );
+} catch (err) {
+  console.error(err);
+  sendNotification(String(err));
+}
+
+/**
+ * Translates Bars into Averages for a given stock
+ * @param bars An array of stock bars for one stock
+ * @returns The Averages for the stock
+ */
+function barsToAverages(bars: AlpacaBar[]): Averages {
+  if (bars.length < 1) {
+    return {
+      symbol: "NO_DATA",
+      shortAverages: [0, 0],
+      longAverages: [0, 0],
+    };
+  } else {
+    const [shortAverages, longAverages] = calculateAverages(bars);
+
+    return { symbol: bars[0].Symbol, shortAverages, longAverages };
+  }
+}
 
 /**
  * Calculates the 2 most recent moving averages of stock closing prices over a shorter and a longer time period
@@ -146,7 +184,7 @@ async function getPositionSymbols(): Promise<string[]> {
 }
 
 /**
- * Retrieves a list of stocks (listed on the NASDAQ and NYSE) that are affordable given a cash balance
+ * Retrieves a list of stocks (listed on the NASDAQ and NYSE) that are "affordable" given a cash balance
  * @param cashBalance The amount of cash available to spend
  * @returns A list of affordable stock symbols
  */
@@ -168,9 +206,7 @@ async function getAffordableSymbols(cashBalance: number): Promise<string[]> {
   const targetAssets = allQuotes
     .entries()
     .filter(([, quote]: [string, any]) => {
-      return (
-        quote.AskPrice < cashBalance / 10 || quote.BidPrice < cashBalance / 10
-      );
+      return quote.AskPrice < cashBalance || quote.BidPrice < cashBalance;
     });
 
   // Filter out less frequently traded stocks
@@ -184,4 +220,26 @@ async function getAffordableSymbols(cashBalance: number): Promise<string[]> {
   return Array.from(
     recentTargetAssets.map(([symbol, quote]: [string, any]) => symbol)
   );
+}
+
+function sendNotification(message: string) {
+  const discordId = process.env.DISCORD_ID;
+  const discordToken = process.env.DISCORD_TOKEN;
+  const discordWebhookUrl = `https://discordapp.com/api/webhooks/${discordId}/${discordToken}`;
+
+  const payload = {
+    content: message,
+    username: "Alpaca-TS-Script",
+    avatar_url:
+      "https://d1qb2nb5cznatu.cloudfront.net/startups/i/638844-fc9b06d417a209c9e53f71809af92091-medium_jpg.jpg?buster=1516408319",
+  };
+  console.log("Sending notification:", payload.content);
+
+  fetch(discordWebhookUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
 }
