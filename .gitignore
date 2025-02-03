@@ -110,6 +110,9 @@ web_modules/
 
 .parcel-cache
 
+# Deno compile output
+*.exe
+
 # Next.js build output
 
 .next
