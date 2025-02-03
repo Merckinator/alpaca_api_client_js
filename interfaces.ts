@@ -1,5 +1,10 @@
 export interface Averages {
-  symbol: string;
-  shortAverages: number[];
   longAverages: number[];
+  shortAverages: number[];
+  symbol: string;
+}
+
+export interface Bar {
+  ClosePrice: number;
+  Symbol: string;
 }
