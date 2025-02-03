@@ -1,9 +1,9 @@
 import {
-  getPositionSymbols,
-  getBars,
   barsToAverages,
-  sendNotification,
   getAffordableSymbols,
+  getBars,
+  getPositionSymbols,
+  sendNotification,
 } from "./functions.ts";
 
 import Alpaca from "npm:@alpacahq/alpaca-trade-api";
@@ -25,7 +25,7 @@ try {
   const symbolsToSell = positionAverages.filter(
     (a) =>
       a.shortAverages[0] <= a.longAverages[0] &&
-      a.shortAverages[1] > a.longAverages[1]
+      a.shortAverages[1] > a.longAverages[1],
   );
   console.log("symbols to sell:", symbolsToSell);
 
@@ -62,7 +62,7 @@ try {
   const buyableAverages = affordableAverages.filter(
     (a) =>
       a.shortAverages[0] > a.longAverages[0] &&
-      a.shortAverages[1] <= a.longAverages[1]
+      a.shortAverages[1] <= a.longAverages[1],
   );
   console.log("count of buyable averages:", buyableAverages.length);
 
@@ -87,7 +87,7 @@ try {
   sendNotification(
     `Script runtime (ms): ${
       scriptEndTime.getMilliseconds() - scriptStartTime.getMilliseconds()
-    }`
+    }`,
   );
 } catch (err) {
   console.error(err);

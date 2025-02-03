@@ -1,4 +1,4 @@
-import { Bar, Averages } from "./interfaces.ts";
+import { Averages, Bar } from "./interfaces.ts";
 
 /**
  * Translates Bars into Averages for a given stock
@@ -72,7 +72,7 @@ export function calculateAverages(stockBars: Bar[]): number[][] {
  */
 export async function getBars(
   alpaca: any,
-  symbols: string[]
+  symbols: string[],
 ): Promise<Bar[][]> {
   // Get price data for the stocks we own
   const daysToFetch = 151;
@@ -119,7 +119,7 @@ export async function getPositionSymbols(alpaca: any): Promise<string[]> {
  */
 export async function getAffordableSymbols(
   alpaca: any,
-  cashBalance: number
+  cashBalance: number,
 ): Promise<string[]> {
   // Get a list of tradable stocks
   const nasdaqAssets: any[] = await alpaca.getAssets({
@@ -136,12 +136,12 @@ export async function getAffordableSymbols(
       // these other flags are just to help filter out uncommon stocks
       asset.shortable &&
       asset.marginable &&
-      asset.easy_to_borrow
+      asset.easy_to_borrow,
   );
 
   // Get a quote for each stock
   const allQuotes = await alpaca.getLatestQuotes(
-    allTradableAssets.map((a: any) => a.symbol)
+    allTradableAssets.map((a: any) => a.symbol),
   );
 
   // Filter out the stocks that are too expensive for us
@@ -156,18 +156,19 @@ export async function getAffordableSymbols(
   pastWeek.setDate(pastWeek.getDate() - 5);
 
   const recentTargetAssets = targetAssets.filter(
-    ([, quote]: [string, any]) => new Date(quote.Timestamp) > pastWeek
+    ([, quote]: [string, any]) => new Date(quote.Timestamp) > pastWeek,
   );
 
   return Array.from(
-    recentTargetAssets.map(([symbol, _quote]: [string, any]) => symbol)
+    recentTargetAssets.map(([symbol, _quote]: [string, any]) => symbol),
   );
 }
 
 export function sendNotification(message: string) {
   const discordId = Deno.env.get("DISCORD_ID");
   const discordToken = Deno.env.get("DISCORD_TOKEN");
-  const discordWebhookUrl = `https://discordapp.com/api/webhooks/${discordId}/${discordToken}`;
+  const discordWebhookUrl =
+    `https://discordapp.com/api/webhooks/${discordId}/${discordToken}`;
 
   const payload = {
     content: message,
