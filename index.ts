@@ -7,6 +7,7 @@ import {
 } from "./functions.ts";
 
 import Alpaca from "npm:@alpacahq/alpaca-trade-api";
+import { Averages } from "./interfaces.ts";
 
 const alpaca = new Alpaca({
   keyId: Deno.env.get("APCA_API_KEY_ID"),
@@ -49,20 +50,28 @@ try {
   const affordableSymbols = await getAffordableSymbols(alpaca, cash);
   console.log("count of affordable symbols:", affordableSymbols.length);
 
-  const affordableBars = await getBars(alpaca, affordableSymbols);
-  const affordableAverages = affordableBars
-    .map(barsToAverages)
-    .filter((a) => a.symbol !== "NO_DATA");
-  console.log("count of affordable averages:", affordableAverages.length);
+  let buyableAverages: Averages[] = [];
 
-  // Want to buy stocks where the short average just rose above the long average.
-  // This is a bullish signal that the stock is likely starting to rise in price.
-  const buyableAverages = affordableAverages.filter(
-    (a) =>
-      a.shortAverages[0] > a.longAverages[0] &&
-      a.shortAverages[1] <= a.longAverages[1],
-  );
-  console.log("count of buyable averages:", buyableAverages.length);
+  // Process the stocks in chunks to avoid choking on too much data at once
+  while (buyableAverages.length === 0 && affordableSymbols.length > 0) {
+    // Script was choking in development on > 6k symbols, so we'll try limiting it to 100
+    const limitedSymbols = affordableSymbols.splice(0, 100);
+
+    const affordableBars = await getBars(alpaca, limitedSymbols);
+    const affordableAverages = affordableBars
+      .map(barsToAverages)
+      .filter((a) => a.symbol !== "NO_DATA");
+    console.log("count of affordable averages:", affordableAverages.length);
+
+    // Want to buy stocks where the short average just rose above the long average.
+    // This is a bullish signal that the stock is likely starting to rise in price.
+    buyableAverages = affordableAverages.filter(
+      (a) =>
+        a.shortAverages[0] > a.longAverages[0] &&
+        a.shortAverages[1] <= a.longAverages[1],
+    );
+    console.log("count of buyable averages:", buyableAverages.length);
+  }
 
   // SECTION: Buy a new stock that we identified at random from our list of buyable stocks
   if (buyableAverages.length > 0) {
