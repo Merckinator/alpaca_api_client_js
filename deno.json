@@ -1,7 +1,7 @@
 {
   "tasks": {
     "compile:development": "deno compile --no-check --allow-read --allow-env --allow-sys=\"osRelease\" --allow-net --env-file index.ts",
-    "compile:production": "deno compile --no-lock --no-check --allow-read --allow-env --allow-sys=\"osRelease\" --allow-net index.ts",
+    "compile:production": "deno install && deno compile --no-lock --no-check --allow-read --allow-env --allow-sys=\"osRelease\" --allow-net index.ts",
     "dev": "deno run --allow-read --allow-env --allow-sys=\"osRelease\" --allow-net --env-file index.ts",
     "start": "deno run --allow-read --allow-env --allow-sys=\"osRelease\" --allow-net index.ts"
   },
