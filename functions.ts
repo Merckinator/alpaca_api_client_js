@@ -79,13 +79,10 @@ export async function getBars(
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - daysToFetch);
 
-  // Script was choking in development on > 6k symbols, so we'll try limiting it to 100
-  const limitedSymbols = symbols.slice(0, 100);
-
-  const bars = alpaca.getMultiBarsAsyncV2(limitedSymbols, {
+  const bars = alpaca.getMultiBarsAsyncV2(symbols, {
     start: startDate.toISOString().slice(0, 10),
     timeframe: alpaca.newTimeframe(1, alpaca.timeframeUnit.DAY),
-    limit: daysToFetch * limitedSymbols.length,
+    limit: daysToFetch * symbols.length,
   });
   const barsReceived: Bar[] = [];
   for await (const b of bars) {
@@ -94,7 +91,7 @@ export async function getBars(
   barsReceived.reverse(); // Changes the order to most recent -> oldest
 
   const symbolBars: Bar[][] = [];
-  limitedSymbols.forEach((symbol) => {
+  symbols.forEach((symbol) => {
     symbolBars.push(barsReceived.filter((b) => b.Symbol === symbol));
   });
   return symbolBars;

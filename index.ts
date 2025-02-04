@@ -23,9 +23,7 @@ try {
   const positionBars = await getBars(alpaca, positionSymbols);
   const positionAverages = positionBars.map(barsToAverages);
   const symbolsToSell = positionAverages.filter(
-    (a) =>
-      a.shortAverages[0] <= a.longAverages[0] &&
-      a.shortAverages[1] > a.longAverages[1],
+    (a) => a.shortAverages[0] <= a.longAverages[0],
   );
   console.log("symbols to sell:", symbolsToSell);
 
