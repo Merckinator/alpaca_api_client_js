@@ -123,9 +123,10 @@ export async function getTradableSymbols(alpaca: any): Promise<string[]> {
     (asset: any) =>
       asset.tradable &&
       // these other flags are just to help filter out uncommon stocks
-      asset.shortable &&
+      asset.easy_to_borrow &&
+      asset.fractionable &&
       asset.marginable &&
-      asset.easy_to_borrow,
+      asset.shortable,
   );
 
   return allTradableAssets.map((a: any) => a.symbol);

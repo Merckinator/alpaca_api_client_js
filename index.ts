@@ -53,19 +53,12 @@ try {
   const tradableSymbols = await getTradableSymbols(alpaca);
   console.log("count of tradable symbols:", tradableSymbols.length);
 
-  const affordableSymbols = await getAffordableSymbols(
-    alpaca,
-    cash,
-    tradableSymbols,
-  );
-  console.log("count of affordable symbols:", affordableSymbols.length);
-
   let buyableAverages: Averages[] = [];
 
   // Process the stocks in chunks to avoid choking on too much data at once
-  while (buyableAverages.length === 0 && affordableSymbols.length > 0) {
+  while (buyableAverages.length === 0 && tradableSymbols.length > 0) {
     // Script was choking in development on > 6k symbols, so we'll try limiting it to 100
-    const limitedSymbols = affordableSymbols.splice(0, 100);
+    const limitedSymbols = tradableSymbols.splice(0, 100);
 
     const affordableBars = await getBars(alpaca, limitedSymbols);
     const affordableAverages = affordableBars
@@ -84,7 +77,8 @@ try {
   }
 
   // SECTION: Buy a new stock that we identified at random from our list of buyable stocks
-  if (buyableAverages.length > 0) {
+  const amountToSpend = Math.floor(cash / 7);
+  if (amountToSpend > 0 && buyableAverages.length > 0) {
     const symbolToBuy =
       buyableAverages[Math.floor(Math.random() * buyableAverages.length)]
         .symbol;
@@ -92,7 +86,7 @@ try {
 
     alpaca.createOrder({
       symbol: symbolToBuy,
-      qty: 1,
+      notional: amountToSpend.toString(),
       side: "buy",
       type: "market",
       time_in_force: "day",
