@@ -27,8 +27,8 @@ deno task dev
 
 2/3/2025 - swapped to Deno to try it out (Railway supports it)
 
-2/1/2025 - Deployed this in Railway to run on a cron schedule (`0 14 * * 1-5`, aka at
-14:00, Monday through Friday)
+2/1/2025 - Deployed this in Railway to run on a cron schedule (`0 14 * * 1-5`,
+aka at 14:00, Monday through Friday)
 
 - Pulls the Alpaca API key and secret from environment variables (set in Railway
   project for Live trading); for development purposes use a `.env` file for

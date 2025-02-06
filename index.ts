@@ -3,6 +3,7 @@ import {
   getAffordableSymbols,
   getBars,
   getPositionSymbols,
+  getTradableSymbols,
   sendNotification,
 } from "./functions.ts";
 
@@ -23,6 +24,8 @@ try {
   const positionSymbols = await getPositionSymbols(alpaca);
   const positionBars = await getBars(alpaca, positionSymbols);
   const positionAverages = positionBars.map(barsToAverages);
+  console.log("positionAverages", positionAverages);
+
   const symbolsToSell = positionAverages.filter(
     (a) => a.shortAverages[0] <= a.longAverages[0],
   );
@@ -47,7 +50,14 @@ try {
   const cash = account.cash;
   console.log("cash:", cash);
 
-  const affordableSymbols = await getAffordableSymbols(alpaca, cash);
+  const tradableSymbols = await getTradableSymbols(alpaca);
+  console.log("count of tradable symbols:", tradableSymbols.length);
+
+  const affordableSymbols = await getAffordableSymbols(
+    alpaca,
+    cash,
+    tradableSymbols,
+  );
   console.log("count of affordable symbols:", affordableSymbols.length);
 
   let buyableAverages: Averages[] = [];

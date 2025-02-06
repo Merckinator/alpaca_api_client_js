@@ -109,16 +109,8 @@ export async function getPositionSymbols(alpaca: any): Promise<string[]> {
   return positions.map((p: any) => p.symbol);
 }
 
-/**
- * Retrieves a list of stocks (listed on the NASDAQ and NYSE) that are "affordable" given a cash balance
- * @param cashBalance The amount of cash available to spend
- * @returns A list of affordable stock symbols
- */
-export async function getAffordableSymbols(
-  alpaca: any,
-  cashBalance: number,
-): Promise<string[]> {
-  // Get a list of tradable stocks
+// Get a list of tradable stocks
+export async function getTradableSymbols(alpaca: any): Promise<string[]> {
   const nasdaqAssets: any[] = await alpaca.getAssets({
     exchange: "NASDAQ",
     status: "active",
@@ -136,16 +128,27 @@ export async function getAffordableSymbols(
       asset.easy_to_borrow,
   );
 
+  return allTradableAssets.map((a: any) => a.symbol);
+}
+
+/**
+ * Retrieves a list of stocks (listed on the NASDAQ and NYSE) that are "affordable" given a cash balance
+ * @param cashBalance The amount of cash available to spend
+ * @returns A list of affordable stock symbols
+ */
+export async function getAffordableSymbols(
+  alpaca: any,
+  cashBalance: number,
+  tradableSymbols: string[],
+): Promise<string[]> {
   // Get a quote for each stock
-  const allQuotes = await alpaca.getLatestQuotes(
-    allTradableAssets.map((a: any) => a.symbol),
-  );
+  const allQuotes = await alpaca.getLatestQuotes(tradableSymbols);
 
   // Filter out the stocks that are too expensive for us
   const targetAssets = allQuotes
     .entries()
-    .filter(([, quote]: [string, any]) => {
-      return quote.AskPrice < cashBalance || quote.BidPrice < cashBalance;
+    .filter(([_a, quote]: [string, any]) => {
+      return (quote.AskPrice < cashBalance || quote.BidPrice < cashBalance);
     });
 
   // Filter out less frequently traded stocks
@@ -153,7 +156,7 @@ export async function getAffordableSymbols(
   pastWeek.setDate(pastWeek.getDate() - 5);
 
   const recentTargetAssets = targetAssets.filter(
-    ([, quote]: [string, any]) => new Date(quote.Timestamp) > pastWeek,
+    ([_a, quote]: [string, any]) => new Date(quote.Timestamp) > pastWeek,
   );
 
   return Array.from(
