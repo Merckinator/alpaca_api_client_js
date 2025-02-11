@@ -1,14 +1,12 @@
 import {
   barsToAverages,
-  getAffordableSymbols,
   getBars,
-  getPositionSymbols,
   getTradableSymbols,
   sendNotification,
 } from "./functions.ts";
 
 import Alpaca from "npm:@alpacahq/alpaca-trade-api";
-import { Averages } from "./interfaces.ts";
+import { Averages, Position } from "./interfaces.ts";
 
 const alpaca = new Alpaca({
   keyId: Deno.env.get("APCA_API_KEY_ID"),
@@ -21,8 +19,11 @@ try {
   const scriptStartTime = new Date();
 
   // SECTION: Check if any stocks we own should be sold
-  const positionSymbols = await getPositionSymbols(alpaca);
-  const positionBars = await getBars(alpaca, positionSymbols);
+  const positions = await alpaca.getPositions();
+  const positionBars = await getBars(
+    alpaca,
+    positions.map((position: Position) => position.symbol),
+  );
   const positionAverages = positionBars.map(barsToAverages);
   console.log("positionAverages", positionAverages);
 
@@ -35,13 +36,19 @@ try {
   if (symbolsToSell.length > 0) {
     symbolsToSell.forEach((a) => {
       sendNotification(`Selling: ${a.symbol}`);
-      alpaca.createOrder({
-        symbol: a.symbol,
-        qty: 1,
-        side: "sell",
-        type: "market",
-        time_in_force: "day",
-      });
+      const amountToSell = positions.find(
+        (position: Position) => position.symbol === a.symbol,
+      )?.qty;
+
+      if (amountToSell) {
+        alpaca.createOrder({
+          symbol: a.symbol,
+          qty: amountToSell,
+          side: "sell",
+          type: "market",
+          time_in_force: "day",
+        });
+      }
     });
   }
 
@@ -78,6 +85,8 @@ try {
 
   // SECTION: Buy a new stock that we identified at random from our list of buyable stocks
   const amountToSpend = Math.floor(cash / 7);
+  console.log("amountToSpend:", amountToSpend);
+
   if (amountToSpend > 0 && buyableAverages.length > 0) {
     const symbolToBuy =
       buyableAverages[Math.floor(Math.random() * buyableAverages.length)]

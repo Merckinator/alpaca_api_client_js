@@ -97,18 +97,6 @@ export async function getBars(
   return symbolBars;
 }
 
-/**
- * Retrieves info on any stocks owned; used to determine if we should sell any
- * @returns Bars for all the stocks we own
- */
-export async function getPositionSymbols(alpaca: any): Promise<string[]> {
-  // Get a list of stocks owned
-  const positions = await alpaca.getPositions();
-  console.log("position:", positions);
-
-  return positions.map((p: any) => p.symbol);
-}
-
 // Get a list of tradable stocks
 export async function getTradableSymbols(alpaca: any): Promise<string[]> {
   const nasdaqAssets: any[] = await alpaca.getAssets({
@@ -149,7 +137,7 @@ export async function getAffordableSymbols(
   const targetAssets = allQuotes
     .entries()
     .filter(([_a, quote]: [string, any]) => {
-      return (quote.AskPrice < cashBalance || quote.BidPrice < cashBalance);
+      return quote.AskPrice < cashBalance || quote.BidPrice < cashBalance;
     });
 
   // Filter out less frequently traded stocks
@@ -168,8 +156,7 @@ export async function getAffordableSymbols(
 export function sendNotification(message: string) {
   const discordId = Deno.env.get("DISCORD_ID");
   const discordToken = Deno.env.get("DISCORD_TOKEN");
-  const discordWebhookUrl =
-    `https://discordapp.com/api/webhooks/${discordId}/${discordToken}`;
+  const discordWebhookUrl = `https://discordapp.com/api/webhooks/${discordId}/${discordToken}`;
 
   const payload = {
     content: message,

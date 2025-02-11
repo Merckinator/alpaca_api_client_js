@@ -8,3 +8,8 @@ export interface Bar {
   ClosePrice: number;
   Symbol: string;
 }
+
+export interface Position {
+  qty: string;
+  symbol: string;
+}
