@@ -1,3 +1,4 @@
+import * as R from "ramda";
 import { Averages, Bar } from "./interfaces.ts";
 
 /**
@@ -27,42 +28,53 @@ export function barsToAverages(bars: Bar[]): Averages {
 export function calculateAverages(stockBars: Bar[]): number[][] {
   const daysInShortAverage = 30;
   const daysInLongAverage = 100;
+  const dayOffset = 1;
 
-  let [shortAverage1, shortAverage2] = [0, 0];
-  let [longAverage1, longAverage2] = [0, 0];
-
-  const closingPrices = stockBars.map((bar) => bar.ClosePrice);
-
-  if (stockBars.length >= 31) {
-    const shortSum1 = closingPrices
-      .slice(0, daysInShortAverage)
-      .reduce((x, y) => x + y);
-
-    const shortSum2 = closingPrices
-      .slice(1, daysInShortAverage)
-      .reduce((x, y) => x + y);
-
-    shortAverage1 = shortSum1 / daysInShortAverage;
-    shortAverage2 = shortSum2 / daysInShortAverage;
-  }
-
-  if (stockBars.length >= 101) {
-    const longSum1 = closingPrices
-      .slice(0, daysInLongAverage)
-      .reduce((x, y) => x + y);
-
-    const longSum2 = closingPrices
-      .slice(1, daysInLongAverage)
-      .reduce((x, y) => x + y);
-
-    longAverage1 = longSum1 / daysInLongAverage;
-    longAverage2 = longSum2 / daysInLongAverage;
-  }
+  const currentShortAverage = calculateAnAverage(
+    daysInShortAverage,
+    0,
+    stockBars
+  );
+  const olderShortAverage = calculateAnAverage(
+    daysInShortAverage,
+    dayOffset,
+    stockBars
+  );
+  const currentLongAverage = calculateAnAverage(
+    daysInLongAverage,
+    0,
+    stockBars
+  );
+  const olderLongAverage = calculateAnAverage(
+    daysInLongAverage,
+    dayOffset,
+    stockBars
+  );
 
   return [
-    [shortAverage1, shortAverage2],
-    [longAverage1, longAverage2],
+    [currentShortAverage, olderShortAverage],
+    [currentLongAverage, olderLongAverage],
   ];
+}
+
+/**
+ * Pure function to calculate each average; TODO: refactor above function to use it.
+ * @param daysInAverage
+ * @param stockBars
+ * @returns
+ */
+function calculateAnAverage(
+  daysInAverage: number,
+  dayOffset: number,
+  stockBars: Bar[]
+): number {
+  return R.pipe(
+    R.drop(dayOffset),
+    R.take(daysInAverage),
+    R.map(R.propOr(0, "ClosePrice")),
+    R.sum,
+    R.divide(R._, daysInAverage)
+  )(stockBars);
 }
 
 /**
@@ -72,7 +84,7 @@ export function calculateAverages(stockBars: Bar[]): number[][] {
  */
 export async function getBars(
   alpaca: any,
-  symbols: string[],
+  symbols: string[]
 ): Promise<Bar[][]> {
   // Get price data for the stocks we own
   const daysToFetch = 151;
@@ -114,7 +126,7 @@ export async function getTradableSymbols(alpaca: any): Promise<string[]> {
       asset.easy_to_borrow &&
       asset.fractionable &&
       asset.marginable &&
-      asset.shortable,
+      asset.shortable
   );
 
   return allTradableAssets.map((a: any) => a.symbol);
@@ -128,7 +140,7 @@ export async function getTradableSymbols(alpaca: any): Promise<string[]> {
 export async function getAffordableSymbols(
   alpaca: any,
   cashBalance: number,
-  tradableSymbols: string[],
+  tradableSymbols: string[]
 ): Promise<string[]> {
   // Get a quote for each stock
   const allQuotes = await alpaca.getLatestQuotes(tradableSymbols);
@@ -145,11 +157,11 @@ export async function getAffordableSymbols(
   pastWeek.setDate(pastWeek.getDate() - 5);
 
   const recentTargetAssets = targetAssets.filter(
-    ([_a, quote]: [string, any]) => new Date(quote.Timestamp) > pastWeek,
+    ([_a, quote]: [string, any]) => new Date(quote.Timestamp) > pastWeek
   );
 
   return Array.from(
-    recentTargetAssets.map(([symbol, _quote]: [string, any]) => symbol),
+    recentTargetAssets.map(([symbol, _quote]: [string, any]) => symbol)
   );
 }
 
