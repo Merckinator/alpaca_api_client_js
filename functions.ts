@@ -63,18 +63,21 @@ export function calculateAverages(stockBars: Bar[]): number[][] {
  * @param stockBars
  * @returns
  */
-function calculateAnAverage(
+export function calculateAnAverage(
   daysInAverage: number,
   dayOffset: number,
   stockBars: Bar[]
 ): number {
-  return R.pipe(
-    R.drop(dayOffset),
-    R.take(daysInAverage),
-    R.map(R.propOr(0, "ClosePrice")),
-    R.sum,
-    R.divide(R._, daysInAverage)
-  )(stockBars);
+  return R.call(
+    R.pipe(
+      R.drop(dayOffset),
+      R.take(daysInAverage),
+      R.map(R.propOr(0, "ClosePrice")),
+      R.sum,
+      R.flip(R.divide)(R.min(daysInAverage, stockBars.length - dayOffset))
+    ),
+    stockBars
+  );
 }
 
 /**
